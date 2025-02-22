@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -18,9 +19,7 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		io.WriteString(os.Stderr, `Websockets client generator
-Example usage: ./client -ip=172.17.0.1 -conn=10
-`)
+		io.WriteString(os.Stderr, `Websockets client generator Example usage: ./client -ip=172.17.0.1 -conn=10`)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -40,22 +39,49 @@ Example usage: ./client -ip=172.17.0.1 -conn=10
 			time.Sleep(time.Second)
 			c.Close()
 		}()
+		go func() {
+			for {
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Printf("Failed to read message: %v", err)
+				}
+				log.Printf("received message: %s", string(message))
+			}
+		}()
 	}
 
 	log.Printf("Finished initializing %d connections", len(conns))
-	tts := time.Second
-	if *connections > 100 {
-		tts = time.Millisecond * 5
-	}
+	// tts := time.Second
+	// if *connections > 100 {
+	// 	tts = time.Millisecond * 5
+	// }
+	// for {
+	// 	for i := 0; i < len(conns); i++ {
+	// 		time.Sleep(tts)
+	// 		conn := conns[i]
+	// 		log.Printf("Conn %d sending message", i)
+	// 		if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second*5)); err != nil {
+	// 			fmt.Printf("Failed to receive pong: %v", err)
+	// 		}
+	// 		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Hello from conn %v", i)))
+	// 	}
+	// }
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
 	for {
-		for i := 0; i < len(conns); i++ {
-			time.Sleep(tts)
-			conn := conns[i]
-			log.Printf("Conn %d sending message", i)
-			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second*5)); err != nil {
-				fmt.Printf("Failed to receive pong: %v", err)
+		select {
+		case <-ticker.C:
+			for i := 0; i < len(conns); i++ {
+				conn := conns[i]
+				time.Sleep(time.Second)
+				log.Printf("Conn %d sending message", i)
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second*5)); err != nil {
+					fmt.Printf("Failed to receive pong: %v", err)
+				}
+				conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Hello from conn %v", i)))
 			}
-			conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Hello from conn %v", i)))
 		}
 	}
 }

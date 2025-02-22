@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  websocket-server:
+    build: .
+    ports:
+      - "8080:8080"
+      - "6060:6060"
+    cap_add:
+      - SYS_PTRACE  # pprof를 위한 권한
+      - SYS_RESOURCE  # setrlimit를 위한 권한
+    security_opt:
+      - seccomp:unconfined  # epoll 사용을 위한 설정
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    privileged: true  # 시스템 리소스 접근을 위한 권한 
